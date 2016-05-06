@@ -20,7 +20,6 @@ function ww_auth_log__log($message) {
     '!message' => $message,
 		'!ip' => $_SERVER['REMOTE_ADDR'],
 	));
-  error_log($root);
   error_log($message."\n", 3, $root.'../logs/wordpress_auth.log');
 }
 
