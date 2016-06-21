@@ -15,7 +15,7 @@
 function ww_auth_log__log($message) {
 	$root = ABSPATH;
 	$message = strtr('!date !host !message from !ip', array(
-		'!date' => date('M  j H:i:s'),
+		'!date' => date('M j H:i:s'),
 		'!host' => gethostname(),
     '!message' => $message,
 		'!ip' => $_SERVER['REMOTE_ADDR'],
