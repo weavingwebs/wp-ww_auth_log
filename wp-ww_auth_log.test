@@ -1,0 +1,85 @@
+<?php
+/**
+* Tests wp-ww_auth_log is logging user events.
+**/
+class WPWWAuthLogTestCase extends \PHPUnit_Framework_TestCase
+{
+  public function testFailedLogin()
+  {
+    // get site url
+    $url = getenv('URL');
+    if (!$url) {
+      throw new \InvalidArgumentException('Missing environment variable: URL');
+    }
+
+    // Create unknown login post
+    $form = array();
+    $username = 'wp-ww_auth_log.test_'.$this->randomName(8);
+    $form['log'] = $username;
+    $form['pwd'] = $this->randomName(8);
+
+    // build request
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "$url/wp-login.php");
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($form));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    // set IP if supplied
+    $ip = getenv('IP');
+    if ($ip) {
+      curl_setopt($ch, CURLOPT_INTERFACE, $ip);
+    }
+
+    // do post
+    try {
+      $response = curl_exec($ch);
+      if (!$response) {
+        throw new \RuntimeException("POST failed: ". curl_error($ch));
+      }
+    }
+    finally {
+      curl_close($ch);
+    }
+
+    // sanity check it failed
+    $this->assertContains('Invalid username', $response);
+
+    // check the log
+    $regex = "/.*Authentication attempt for unknown user $username/";
+    $log = file_get_contents(__DIR__.'/../../../../logs/wordpress_auth.log');
+    $this->assertEquals(true, preg_match($regex, $log));
+  }
+
+  /**
+   * Taken from drupal 7 modules/simpletest/drupal_web_test_case.php
+   *
+   * Generates a random string containing letters and numbers.
+   *
+   * The string will always start with a letter. The letters may be upper or
+   * lower case. This method is better for restricted inputs that do not
+   * accept certain characters. For example, when testing input fields that
+   * require machine readable values (i.e. without spaces and non-standard
+   * characters) this method is best.
+   *
+   * Do not use this method when testing unvalidated user input. Instead, use
+   * DrupalWebTestCase::randomString().
+   *
+   * @param $length
+   *   Length of random string to generate.
+   *
+   * @return
+   *   Randomly generated string.
+   *
+   * @see DrupalWebTestCase::randomString()
+   */
+  public static function randomName($length = 8) {
+    $values = array_merge(range(65, 90), range(97, 122), range(48, 57));
+    $max = count($values) - 1;
+    $str = chr(mt_rand(97, 122));
+    for ($i = 1; $i < $length; $i++) {
+      $str .= chr($values[mt_rand(0, $max)]);
+    }
+    return $str;
+  }
+}
