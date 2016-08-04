@@ -14,8 +14,13 @@
 **/
 function ww_auth_log__log($message) {
 	$root = ABSPATH;
+
+	// wordpress always forces the timezone to UTC, if fail2ban's clock is not UTC
+	// then it will ignore all entries. Just hope php.ini is set correctly.
+	$date = new \DateTime('now', new \DateTimeZone(ini_get('date.timezone')));
+
 	$message = strtr('!date !host !message from !ip', array(
-		'!date' => date('M j H:i:s'),
+		'!date' => $date->format('M j H:i:s'),
 		'!host' => gethostname(),
     '!message' => $message,
 		'!ip' => $_SERVER['REMOTE_ADDR'],
