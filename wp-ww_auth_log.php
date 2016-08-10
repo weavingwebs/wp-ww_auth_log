@@ -20,7 +20,7 @@ function ww_auth_log__log($message) {
 	$date = new \DateTime('now', new \DateTimeZone(ini_get('date.timezone')));
 
 	$message = strtr('!date !host !message from !ip', array(
-		'!date' => $date->format('M j H:i:s'),
+		'!date' => $date->format('M j H:i:s Y'),
 		'!host' => gethostname(),
     '!message' => $message,
 		'!ip' => $_SERVER['REMOTE_ADDR'],
