@@ -3,7 +3,7 @@
 * Plugin Name: WP WW Auth Log
 * Description: Write all login attempts to a file (Based on wp-fail2ban)
 * Text Domain: wp-ww_auth_log
-* Version: 0.0.3
+* Version: 0.0.4
 * Author: Weaving Webs Ltd
 * License: GPL2
 * SPDX-License-Identifier: GPL-2.0

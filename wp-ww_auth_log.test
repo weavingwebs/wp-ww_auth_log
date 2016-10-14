@@ -7,10 +7,7 @@ class WPWWAuthLogTestCase extends \PHPUnit_Framework_TestCase
   public function testFailedLogin()
   {
     // get site url
-    $url = getenv('URL');
-    if (!$url) {
-      throw new \InvalidArgumentException('Missing environment variable: URL');
-    }
+    $url = $this->getUrl();
 
     // Create unknown login post
     $form = array();
@@ -26,9 +23,23 @@ class WPWWAuthLogTestCase extends \PHPUnit_Framework_TestCase
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     // set IP if supplied
-    $ip = getenv('IP');
+    $ip = $this->getIP();
     if ($ip) {
       curl_setopt($ch, CURLOPT_INTERFACE, $ip);
+      curl_setopt($ch, CURLOPT_RESOLVE, array(
+        implode(':', array(
+          $this->getHostname(),
+          80,
+          $this->getHTTPIP(),
+        )),
+        'wwdb2:3306:' . $this->getWWDBIP(),
+      ));
+
+      // make sure sites that redirect (i.e. port 80 -> 443) still work
+      curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+      // make sure it doesn't run forever if something is broken
+      curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     }
 
     // do post
@@ -81,5 +92,56 @@ class WPWWAuthLogTestCase extends \PHPUnit_Framework_TestCase
       $str .= chr($values[mt_rand(0, $max)]);
     }
     return $str;
+  }
+
+  /**
+   * Get the IP address of the httpd container on the test network.
+   */
+  protected function getUrl() {
+    $value = getenv('URL');
+    if (!$value) {
+      throw new \InvalidArgumentException('Missing environment variable: URL');
+    }
+    return $value;
+  }
+
+  /**
+   * Get the IP address of the site container on the test network.
+   */
+  protected function getIP() {
+    return getenv('F2BTEST_IP');
+  }
+
+  /**
+   * Get the IP address of the httpd container on the test network.
+   */
+  protected function getHTTPIP() {
+    $value = getenv('F2BTEST_HTTPIP');
+    if (!$value) {
+      throw new \InvalidArgumentException('F2BTEST_HTTPIP is not defined');
+    }
+    return $value;
+  }
+
+  /**
+   * Get the IP address of the httpd container on the test network.
+   */
+  protected function getWWDBIP() {
+    $value = getenv('F2BTEST_WWDBIP');
+    if (!$value) {
+      throw new \InvalidArgumentException('F2BTEST_WWDBIP is not defined');
+    }
+    return $value;
+  }
+
+  /**
+   * Get the hostname of the httpd container on the test network.
+   */
+  protected function getHostname() {
+    $value = getenv('F2BTEST_DOMAIN');
+    if (!$value) {
+      throw new \InvalidArgumentException('F2BTEST_DOMAIN is not defined');
+    }
+    return $value;
   }
 }
