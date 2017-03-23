@@ -182,6 +182,7 @@ class WWAuthLogger {
       }
       else {
         // Kill the request.
+        $this->log('Login attempted while disabled');
         ob_end_clean();
         http_response_code(403);
         die();
