@@ -100,7 +100,7 @@ class WWAuthLogger {
   	$date = new \DateTime('now', $this->timezone);
 
   	$log_entry = strtr('!date !host !message from !ip', array(
-  		'!date' => $date->format('M j H:i:s Y'),
+  		'!date' => $date->format('M j H:i:s.u Y'),
   		'!host' => gethostname(),
       '!message' => $message,
   		'!ip' => $_SERVER['REMOTE_ADDR'],
@@ -185,7 +185,7 @@ class WWAuthLogger {
         $this->log('Login attempted while disabled');
         if (ob_get_length() !== FALSE) {
           ob_end_clean();
-        }        
+        }
         http_response_code(403);
         die();
       }
