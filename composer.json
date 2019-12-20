@@ -1,0 +1,13 @@
+{
+  "autoload": {
+    "psr-4": {
+      "WW\\AuthLog\\": "src"
+    }
+  },
+  "require": {
+    "geoip2/geoip2": "^2.9"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-master"
+  }
+}
