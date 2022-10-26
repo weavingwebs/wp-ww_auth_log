@@ -86,6 +86,7 @@ class WWAuthLogger {
 		add_action( 'plugins_loaded', [ $this, 'plugins_loaded' ] );
 		add_action( 'login_init', [ $this, 'killIfLoginDisabled' ] );
 		add_filter( 'authenticate', [ $this, 'killIfLoginDisabled' ] );
+    add_filter( 'http_request_args', [ $this, 'http_request_args' ], 10, 2 );
 
 		// Register the installer. NOTE: this function must be passed the filepath
 		// to the main plugin file (The one with 'Plugin Name:').
@@ -336,6 +337,17 @@ class WWAuthLogger {
 			$this->install();
 		}
 	}
+
+  /**
+   * Implements filter: http_request_args.
+   */
+  public function http_request_args(array $args, string $url): array {
+    // We need to allow plugin downloads that are local to our server.
+    if (strpos($url, 'https://www.weavingwebs.co.uk/') === 0) {
+      $args['reject_unsafe_urls'] = false;
+    }
+    return $args;
+  }
 
 	/**
 	 * @param string $default
