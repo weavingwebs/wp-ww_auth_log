@@ -1,3 +1,4 @@
 .idea
 GeoLite2-Country.mmdb
 vendor
+.env
