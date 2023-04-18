@@ -43,6 +43,10 @@ class WWAuthLogger {
 	 */
 	const LOGIN_DISABLE_TIME = 20;
 
+  const WW_INTERNAL_IPS = [
+    '172.25.162.216', // Boomer.
+  ];
+
 	/**
 	 * @var string $log_path
 	 *  The filepath to write the log entries to.
@@ -219,11 +223,13 @@ class WWAuthLogger {
 		if ( ! $kill_login ) {
 			$country_whitelist = $this->optionStrToArray('ww_auth_log_country_whitelist');
 			if ( $country_whitelist ) {
-				$c          = $this->getIpCountry( '[Unknown]' );
-				$kill_login = ! in_array( $c, $country_whitelist, TRUE );
-				if ( $kill_login ) {
-					$this->log( 'Login attempted from country not in whitelist: ' . $c );
-				}
+				$country    = $this->getIpCountry( '[Unknown]' );
+        if ( $country !== '[WW]' ) {
+          $kill_login = ! in_array( $country, $country_whitelist, TRUE );
+          if ( $kill_login ) {
+            $this->log( 'Login attempted from country not in whitelist: ' . $country );
+          }
+        }
 			}
 		}
 
@@ -356,13 +362,18 @@ class WWAuthLogger {
 	 * @throws \MaxMind\Db\Reader\InvalidDatabaseException
 	 */
 	protected function getIpCountry( $default = NULL ) {
+    $ip = $_SERVER['REMOTE_ADDR'];
+    if (in_array($ip, static::WW_INTERNAL_IPS, TRUE)) {
+      return '[WW]';
+    }
+
 		$reader = new Reader(
 			__DIR__ . '/../GeoLite2-Country.mmdb',
 			// List of locale codes to use in name property in order of preference
 			[ 'en' ]
 		);
 		try {
-			$record  = $reader->country( $_SERVER['REMOTE_ADDR'] );
+			$record  = $reader->country( $ip );
 			$country = $record->country->isoCode;
 		}
 		catch ( AddressNotFoundException $e ) {
