@@ -18,6 +18,12 @@ class WWAuthLogSettings {
 
 	  add_option( 'ww_auth_log_ip_whitelist', '');
 		register_setting( 'ww_auth_log_options', 'ww_auth_log_ip_whitelist' );
+
+	  add_option( 'ww_auth_log_disable_new_user_notification_to_admin', '');
+		register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_new_user_notification_to_admin' );
+
+	  add_option( 'ww_auth_log_disable_password_change_notification_to_admin', '');
+		register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_password_change_notification_to_admin' );
 	}
 
 	public function admin_menu() {
@@ -66,7 +72,35 @@ class WWAuthLogSettings {
           </ul>
         </div>
 
-				<?php  submit_button(); ?>
+        <div>
+          <h3>Admin Email Notifications</h3>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_disable_new_user_notification_to_admin"
+                name="ww_auth_log_disable_new_user_notification_to_admin"
+                value="1"
+                <?php checked( get_option('ww_auth_log_disable_new_user_notification_to_admin'), 1 ); ?>
+              />
+              Disable New User Notifications to Admin
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_disable_password_change_notification_to_admin"
+                name="ww_auth_log_disable_password_change_notification_to_admin"
+                value="1"
+                <?php checked( get_option('ww_auth_log_disable_password_change_notification_to_admin'), 1 ); ?>
+              />
+              Disable Password Change Notifications to Admin
+            </label>
+          </div>
+        </div>
+
+				<?php submit_button(); ?>
 			</form>
 		</div>
 		<?php
