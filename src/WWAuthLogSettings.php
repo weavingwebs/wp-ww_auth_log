@@ -16,6 +16,9 @@ class WWAuthLogSettings {
 		add_option( 'ww_auth_log_country_whitelist', 'GB');
 		register_setting( 'ww_auth_log_options', 'ww_auth_log_country_whitelist' );
 
+    add_option( 'ww_auth_log_country_blacklist', 'RU,KP,CN,BY,UA');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_country_blacklist' );
+
 	  add_option( 'ww_auth_log_ip_whitelist', '');
 		register_setting( 'ww_auth_log_options', 'ww_auth_log_ip_whitelist' );
 
@@ -67,8 +70,24 @@ class WWAuthLogSettings {
             <li>ISO country codes.</li>
             <li>comma separate multiple values.</li>
             <li>leave empty to allow anywhere.</li>
-            <li>enter <code>!</code> to disallow any country (if the IP is not explicitly whitelisted).</li>
             <li>use [Unknown] to allow ips without a geoip entry (includes local subnets).</li>
+          </ul>
+        </div>
+
+        <div>
+          <h3>Country Blacklist</h3>
+          <label for="ww_auth_log_country_blacklist">Countries:</label>
+          <input
+            type="text"
+            id="ww_auth_log_country_blacklist"
+            name="ww_auth_log_country_blacklist"
+            value="<?php echo get_option('ww_auth_log_country_blacklist'); ?>"
+            placeholder="i.e. GB,IE"
+          />
+          <ul class="ul-disc">
+            <li>ISO country codes.</li>
+            <li>comma separate multiple values.</li>
+            <li>please note: whitelist takes precedence</li>
           </ul>
         </div>
 

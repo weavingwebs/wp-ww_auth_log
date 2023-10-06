@@ -235,6 +235,20 @@ class WWAuthLogger {
 			}
 		}
 
+		// Check Country Blacklist.
+		if ( ! $kill_login ) {
+			$country_blacklist = $this->optionStrToArray('ww_auth_log_country_blacklist');
+			if ( $country_blacklist ) {
+				$country    = $this->getIpCountry( '[Unknown]' );
+        if ( $country !== '[WW]' ) {
+          $kill_login = in_array( $country, $country_blacklist, TRUE );
+          if ( $kill_login ) {
+            $this->log( 'Login attempted from country in blacklist: ' . $country );
+          }
+        }
+			}
+		}
+
 		// Kill the request.
 		if ( $kill_login ) {
 			if ( ob_get_length() !== FALSE ) {
