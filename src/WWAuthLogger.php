@@ -285,11 +285,16 @@ class WWAuthLogger {
 	 */
 	public function wp_login_failed( $username ) {
 		// Log the failure.
-		$msg = ( wp_cache_get( $username, 'userlogins' ) )
-			? "Authentication failure for $username"
-			: "Authentication attempt for unknown user $username";
-		$this->log( $msg );
-		$this->recordFailedLogin( $username );
+    $action_label = ( wp_cache_get( $username, 'userlogins' ) ) ? "failure for $username" : "attempt for unknown user $username";
+
+    // Check IP Whitelist.
+    $ip_whitelist = $this->optionStrToArray('ww_auth_log_ip_whitelist');
+    if ( $ip_whitelist && in_array( $_SERVER['REMOTE_ADDR'], $ip_whitelist, TRUE ) ) {
+      $this->log('Whitelisted IP authentication ' . $action_label);
+    } else {
+      $this->log('Authentication ' . $action_label);
+      $this->recordFailedLogin($username);
+    }
 	}
 
 	/**
