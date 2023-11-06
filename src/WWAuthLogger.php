@@ -290,7 +290,9 @@ class WWAuthLogger {
     // Check IP Whitelist.
     $ip_whitelist = $this->optionStrToArray('ww_auth_log_ip_whitelist');
     if ( $ip_whitelist && in_array( $_SERVER['REMOTE_ADDR'], $ip_whitelist, TRUE ) ) {
-      $this->log('Whitelisted IP authentication ' . $action_label);
+      // NOTE: It's important to avoid the word 'authentication' here as it
+      // would be picked up by fail2ban/nf2b.
+      $this->log('Whitelisted IP auth ' . $action_label);
     } else {
       $this->log('Authentication ' . $action_label);
       $this->recordFailedLogin($username);
