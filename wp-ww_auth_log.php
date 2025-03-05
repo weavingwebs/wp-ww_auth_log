@@ -3,7 +3,7 @@
 * Plugin Name: WW Auth Log
 * Description: Weaving Webs Additional Security.
 * Text Domain: wp-ww_auth_log
-* Version: 1.2.12
+* Version: 1.2.13
 * Author: Weaving Webs Ltd
 * License: GPL2
 * SPDX-License-Identifier: GPL-2.0
