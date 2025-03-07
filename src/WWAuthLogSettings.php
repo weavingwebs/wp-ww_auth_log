@@ -28,33 +28,17 @@ class WWAuthLogSettings {
 	  add_option( 'ww_auth_log_disable_password_change_notification_to_admin', '');
 		register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_password_change_notification_to_admin' );
 
-    //disable periodic admin email verification page on login
     add_option( 'ww_auth_log_disable_admin_email_check_interval', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_admin_email_check_interval' );
-    if (get_option('ww_auth_log_disable_admin_email_check_interval')) {
-      add_filter( 'admin_email_check_interval', '__return_false' );
-    }
 
-    // Disable core update emails
     add_option( 'ww_auth_log_disable_auto_core_update_send_email', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_auto_core_update_send_email' );
-    if (get_option('ww_auth_log_disable_auto_core_update_send_email')) {
-      add_filter( 'auto_core_update_send_email', '__return_false' );
-    }
 
-    // Disable plugin update emails
     add_option( 'ww_auth_log_disable_auto_plugin_update_send_email', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_auto_plugin_update_send_email' );
-    if (get_option('ww_auth_log_disable_auto_plugin_update_send_email')) {
-      add_filter( 'auto_plugin_update_send_email', '__return_false' );
-    }
 
-    // Disable theme update emails
     add_option( 'ww_auth_log_disable_auto_theme_update_send_email', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_auto_theme_update_send_email' );
-    if (get_option('ww_auth_log_disable_auto_theme_update_send_email')) {
-      add_filter( 'auto_theme_update_send_email', '__return_false' );
-    }
 	}
 
 	public function admin_menu() {

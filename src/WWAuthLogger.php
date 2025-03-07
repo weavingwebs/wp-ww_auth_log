@@ -94,6 +94,26 @@ class WWAuthLogger {
     add_filter( 'wp_new_user_notification_email_admin', [$this, 'wp_new_user_notification_email_admin']);
     add_filter( 'wp_password_change_notification_email', [$this, 'wp_password_change_notification_email']);
 
+    //disable periodic admin email verification page on login
+    if (get_option('ww_auth_log_disable_admin_email_check_interval')) {
+      add_filter( 'admin_email_check_interval', '__return_false' );
+    }
+
+    // Disable core update emails
+    if (get_option('ww_auth_log_disable_auto_core_update_send_email')) {
+      add_filter( 'auto_core_update_send_email', '__return_false' );
+    }
+
+    // Disable plugin update emails
+    if (get_option('ww_auth_log_disable_auto_plugin_update_send_email')) {
+      add_filter( 'auto_plugin_update_send_email', '__return_false' );
+    }
+
+    // Disable theme update emails
+    if (get_option('ww_auth_log_disable_auto_theme_update_send_email')) {
+      add_filter( 'auto_theme_update_send_email', '__return_false' );
+    }
+
     // Register the installer. NOTE: this function must be passed the filepath
 		// to the main plugin file (The one with 'Plugin Name:').
 		register_activation_hook( __DIR__ . '/wp-ww_auth_log.php', [ $this, 'install' ] );
