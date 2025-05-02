@@ -19,6 +19,9 @@ class WWAuthLogSettings {
     add_option( 'ww_auth_log_country_blacklist', 'RU,KP,CN,BY,UA');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_country_blacklist' );
 
+    add_option( 'ww_auth_log_auth_cookie_expiration', '10');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_auth_cookie_expiration' );
+
 	  add_option( 'ww_auth_log_ip_whitelist', '');
 		register_setting( 'ww_auth_log_options', 'ww_auth_log_ip_whitelist' );
 
@@ -101,6 +104,20 @@ class WWAuthLogSettings {
             <li>comma separate multiple values.</li>
             <li>please note: whitelist takes precedence</li>
           </ul>
+        </div>
+
+        <div>
+          <h3>Auth Cookie Expiration</h3>
+          <label for="ww_auth_log_auth_cookie_expiration">Expiration in hours:</label>
+          <input
+            type="number"
+            id="ww_auth_log_auth_cookie_expiration"
+            name="ww_auth_log_auth_cookie_expiration"
+            value="<?php echo get_option('ww_auth_log_auth_cookie_expiration'); ?>"
+            min="0"
+            placeholder=""
+          />
+          Must be a number of hours, leave blank for WordPress default.
         </div>
 
         <div>

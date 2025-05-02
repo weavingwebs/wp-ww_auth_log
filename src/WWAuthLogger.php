@@ -92,6 +92,9 @@ class WWAuthLogger {
 		add_filter( 'authenticate', [ $this, 'killIfLoginDisabled' ] );
     add_filter( 'http_request_args', [ $this, 'http_request_args' ], 10, 2 );
 
+    // Auth cookie expiration.
+    add_filter( 'auth_cookie_expiration', [ $this, 'auth_cookie_expiration' ] );
+
     // Settings hooks.
     // NOTE: We need to be fully bootstrapped to use get_option so we have to
     // always register the hooks.
@@ -384,6 +387,10 @@ class WWAuthLogger {
       $args['reject_unsafe_urls'] = false;
     }
     return $args;
+  }
+
+  public function auth_cookie_expiration($expire) {
+    return get_option('ww_auth_log_auth_cookie_expiration') ?: $expire;
   }
 
   public function return_false_if_option_true_callback($option_name) {
