@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 # Run from the project root (assume same dir as this script).
 ROOT="$(cd "$(dirname "$0")"; pwd -P)"
@@ -41,3 +41,28 @@ cp -rv \
 cd dist
 zip -r ww_auth_log.zip ww_auth_log
 rm -rf ww_auth_log
+
+# Write details.json.
+DETAILS_JSON='{
+ 	"name" : "WW Auth Log",
+ 	"version" : "",
+ 	"download_url" : "https:\/\/www.weavingwebs.co.uk\/wordpress-plugins\/ww_auth_log\/ww_auth_log.zip",
+	"requires" : "5.8",
+	"tested" : "6.2.0",
+	"requires_php" : "7.0",
+	"last_updated" : "",
+ 	"sections" : {
+ 		"description" : "<h2>Weaving Webs Additional Security.</h2>This is for Weaving Webs Hosted Customers Only."
+ 	}
+}'
+# i.e. 2024-06-06 09:00:00
+LAST_UPDATED=$(date +'%Y-%m-%d %H:%M:%S')
+VERSION=$(grep '* Version: ' "$ROOT"/wp-ww_auth_log.php | cut -d' ' -f3)
+echo "$DETAILS_JSON" | jq \
+  --arg last_updated "$LAST_UPDATED" \
+  --arg version "$VERSION" \
+  '.version = $version |
+  .last_updated = $last_updated' \
+  > details.json
+
+echo "Wrote details.json (version: $VERSION)"
