@@ -390,7 +390,8 @@ class WWAuthLogger {
   }
 
   public function auth_cookie_expiration($expire) {
-    return get_option('ww_auth_log_auth_cookie_expiration') ?: $expire;
+    $expiry_hours = get_option('ww_auth_log_auth_cookie_expiration');
+    return $expiry_hours ? ($expiry_hours * 3600) : $expire;
   }
 
   public function return_false_if_option_true_callback($option_name) {
