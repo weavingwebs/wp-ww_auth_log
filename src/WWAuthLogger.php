@@ -4,6 +4,8 @@ namespace WW\AuthLog;
 
 use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
+use WP_Scripts;
+use WP_Styles;
 
 /**
  * WordPress WW Auth Logger.
@@ -104,6 +106,22 @@ class WWAuthLogger {
     add_filter( 'auto_core_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_core_update_send_email'));
     add_filter( 'auto_plugin_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_plugin_update_send_email'));
     add_filter( 'auto_theme_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_theme_update_send_email'));
+
+    if(get_option('ww_auth_log_other_hideWPVersion')){
+        add_filter('style_loader_src', static::class.'::replaceVersion');
+        add_filter('script_loader_src', static::class.'::replaceVersion');
+    }
+
+    add_action('init', static::class.'::initAction');
+
+    add_filter('get_the_generator_html', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_xhtml', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_atom', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_rss2', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_rdf', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_comment', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_export', static::class.'::genFilter', 99, 2);
+
 
     // Register the installer. NOTE: this function must be passed the filepath
 		// to the main plugin file (The one with 'Plugin Name:').
@@ -431,5 +449,82 @@ class WWAuthLogger {
 		return $country;
 	}
 
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $url
+     * @return array|mixed|string|string[]|null
+     */
+    public static function replaceVersion($url) {
+        if (is_string($url))
+            return preg_replace_callback("/([&;\?]ver)=(.+?)(&|$)/", static::class."::replaceVersionCallback", $url);
+        return $url;
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $matches
+     * @return string
+     */
+    public static function replaceVersionCallback($matches) {
+        global $wp_version;
+        return $matches[1] . '=' . ($wp_version === $matches[2] ? wp_hash($matches[2]) : $matches[2]) . $matches[3];
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     * @return void
+     */
+    public static function initAction()
+    {
+		if (get_option('ww_auth_log_other_hideWPVersion')) {
+
+            global $wp_version;
+            global $wp_styles;
+
+            if (!($wp_styles instanceof WP_Styles)) {
+                $wp_styles = new WP_Styles();
+            }
+            if ($wp_styles->default_version === $wp_version) {
+                $wp_styles->default_version = wp_hash($wp_styles->default_version);
+            }
+
+            foreach ($wp_styles->registered as $key => $val) {
+                if ($wp_styles->registered[$key]->ver === $wp_version) {
+                    $wp_styles->registered[$key]->ver = wp_hash($wp_styles->registered[$key]->ver);
+                }
+            }
+
+            global $wp_scripts;
+            if (!($wp_scripts instanceof WP_Scripts)) {
+                $wp_scripts = new WP_Scripts();
+            }
+            if ($wp_scripts->default_version === $wp_version) {
+                $wp_scripts->default_version = wp_hash($wp_scripts->default_version);
+            }
+
+            foreach ($wp_scripts->registered as $key => $val) {
+                if ($wp_scripts->registered[$key]->ver === $wp_version) {
+                    $wp_scripts->registered[$key]->ver = wp_hash($wp_scripts->registered[$key]->ver);
+                }
+            }
+        }
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $gen
+     * @param $type
+     * @return mixed|string
+     */
+    public static function genFilter($gen, $type){
+        if(get_option('ww_auth_log_other_hideWPVersion')){
+            return '';
+        } else {
+            return $gen;
+        }
+    }
 
 }

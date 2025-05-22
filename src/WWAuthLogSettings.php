@@ -42,6 +42,9 @@ class WWAuthLogSettings {
 
     add_option( 'ww_auth_log_disable_auto_theme_update_send_email', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_auto_theme_update_send_email' );
+
+    add_option( 'ww_auth_log_other_hideWPVersion', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_other_hideWPVersion' );
 	}
 
 	public function admin_menu() {
@@ -192,6 +195,18 @@ class WWAuthLogSettings {
                 <?php checked( get_option('ww_auth_log_disable_auto_theme_update_send_email'), 1 ); ?>
               />
               Disable theme update emails
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_other_hideWPVersion"
+                name="ww_auth_log_other_hideWPVersion"
+                value="1"
+                <?php checked( get_option('ww_auth_log_other_hideWPVersion'), 1 ); ?>
+              />
+              Hide Wordpress version
             </label>
           </div>
         </div>
