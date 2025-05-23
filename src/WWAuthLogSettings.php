@@ -45,6 +45,12 @@ class WWAuthLogSettings {
 
     add_option( 'ww_auth_log_other_hideWPVersion', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_other_hideWPVersion' );
+
+    add_option( 'ww_auth_log_disableCodeExecutionUploads', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_disableCodeExecutionUploads' );
+
+    add_option( 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated' );
 	}
 
 	public function admin_menu() {
@@ -207,6 +213,18 @@ class WWAuthLogSettings {
                 <?php checked( get_option('ww_auth_log_other_hideWPVersion'), 1 ); ?>
               />
               Hide Wordpress version
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_disableCodeExecutionUploads"
+                name="ww_auth_log_disableCodeExecutionUploads"
+                value="1"
+                <?php checked( get_option('ww_auth_log_disableCodeExecutionUploads'), 1 ); ?>
+              />
+              Disable Code Execution for Uploads directory
             </label>
           </div>
         </div>

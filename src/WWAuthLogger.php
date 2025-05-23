@@ -6,6 +6,7 @@ use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
 use WP_Scripts;
 use WP_Styles;
+use \Exception;
 
 /**
  * WordPress WW Auth Logger.
@@ -67,6 +68,33 @@ class WWAuthLogger {
 	 */
 	protected $timezone;
 
+    /**
+     * @var string $_disable_scripts_regex
+     * Regex required for disabling code execution in uploads directory
+     */
+    private static $_disable_scripts_regex = '/# BEGIN Wordfence code execution protection.+?# END Wordfence code execution protection/s';
+
+    /**
+     * .htaccess file contents to disable all script execution in a given directory.
+     * Regex required for disabling code execution in uploads directory
+     */
+    private static $_disable_scripts_htaccess = '# BEGIN Wordfence code execution protection
+    <IfModule mod_php5.c>
+    php_flag engine 0
+    </IfModule>
+    <IfModule mod_php7.c>
+    php_flag engine 0
+    </IfModule>
+    <IfModule mod_php.c>
+    php_flag engine 0
+    </IfModule>
+    
+    AddHandler cgi-script .php .phtml .php3 .pl .py .jsp .asp .htm .shtml .sh .cgi
+    Options -ExecCGI
+    # END Wordfence code execution protection
+    ';
+
+
 	/**
 	 * Public constructor.
 	 */
@@ -82,6 +110,8 @@ class WWAuthLogger {
 
 	/**
 	 * Initialise the Wordpress Hooks.
+     *
+     * @throws Exception
 	 */
 	public function wpInit() {
 		add_action( 'wp_login', [ $this, 'wp_login' ], 10, 2 );
@@ -110,6 +140,12 @@ class WWAuthLogger {
     if(get_option('ww_auth_log_other_hideWPVersion')){
         add_filter('style_loader_src', static::class.'::replaceVersion');
         add_filter('script_loader_src', static::class.'::replaceVersion');
+    }
+
+    if(get_option('ww_auth_log_disableCodeExecutionUploads')){
+        self::disableCodeExecutionForUploads();
+    }else{
+        self::removeCodeExecutionProtectionForUploads();
     }
 
     add_action('init', static::class.'::initAction');
@@ -526,5 +562,97 @@ class WWAuthLogger {
             return $gen;
         }
     }
+
+    /**
+     * Add/Merge .htaccess file in the uploads directory to prevent code execution.
+     *
+     * Part of function to disable code execution from the uploads directory
+     *
+     * @return bool
+     * @throws Exception
+     */
+    public static function disableCodeExecutionForUploads() {
+        $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+        $uploads_htaccess_has_content = false;
+        if (file_exists($uploads_htaccess_file_path)) {
+            $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+
+            // htaccess exists and contains our htaccess code to disable script execution, nothing more to do
+            if (strpos($htaccess_contents, self::$_disable_scripts_htaccess) !== false) {
+                return true;
+            }
+            $uploads_htaccess_has_content = strlen(trim($htaccess_contents)) > 0;
+        }
+        if (@file_put_contents($uploads_htaccess_file_path, ($uploads_htaccess_has_content ? "\n\n" : "") . self::$_disable_scripts_htaccess, FILE_APPEND | LOCK_EX) === false) {
+            throw new Exception(__("Unable to save the .htaccess file needed to disable script execution in the uploads directory. Please check your permissions on that directory.", 'wordfence'));
+        }
+        update_option( 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated', true );
+        return true;
+    }
+
+    /**
+     * Part of function to disable code execution from the uploads directory
+
+     * @return void
+     */
+    public static function migrateCodeExecutionForUploadsPHP7() {
+        if (self::get('disableCodeExecutionUploads')) {
+            if (!self::get('disableCodeExecutionUploadsPHP7Migrated')) {
+                $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+                if (file_exists($uploads_htaccess_file_path)) {
+                    $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+                    if (preg_match(self::$_disable_scripts_regex, $htaccess_contents)) {
+                        $htaccess_contents = preg_replace(self::$_disable_scripts_regex, self::$_disable_scripts_htaccess, $htaccess_contents);
+                        @file_put_contents($uploads_htaccess_file_path, $htaccess_contents);
+                        self::set('disableCodeExecutionUploadsPHP7Migrated', true);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove script execution protections for our the .htaccess file in the uploads directory.
+     *
+     * Part of function to disable code execution from the uploads directory
+
+     * @return bool
+     * @throws Exception
+     */
+    public static function removeCodeExecutionProtectionForUploads() {
+        $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+        if (file_exists($uploads_htaccess_file_path)) {
+            $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+
+            // Check that it is in the file
+            if (preg_match(self::$_disable_scripts_regex, $htaccess_contents)) {
+                $htaccess_contents = preg_replace(self::$_disable_scripts_regex, '', $htaccess_contents);
+
+                $error_message = __("Unable to remove code execution protections applied to the .htaccess file in the uploads directory. Please check your permissions on that file.", 'wordfence');
+                if (strlen(trim($htaccess_contents)) === 0) {
+                    // empty file, remove it
+                    if (!@unlink($uploads_htaccess_file_path)) {
+                        throw new Exception($error_message);
+                    }
+
+                } elseif (@file_put_contents($uploads_htaccess_file_path, $htaccess_contents, LOCK_EX) === false) {
+                    throw new Exception($error_message);
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Part of function to disable code execution from the uploads directory
+     *
+     * @return string
+     */
+    private static function _uploadsHtaccessFilePath() {
+        $upload_dir = wp_upload_dir();
+        return $upload_dir['basedir'] . '/.htaccess';
+    }
+
+
 
 }
