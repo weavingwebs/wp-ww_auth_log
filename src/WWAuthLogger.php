@@ -4,9 +4,11 @@ namespace WW\AuthLog;
 
 use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
-use WP_Scripts;
-use WP_Styles;
+use \WP_Scripts;
+use \WP_Styles;
 use \Exception;
+use \WWAuth_WP_REST_Users_Controller;
+use \WP_Error;
 
 /**
  * WordPress WW Auth Logger.
@@ -148,6 +150,15 @@ class WWAuthLogger {
         self::removeCodeExecutionProtectionForUploads();
     }
 
+    if (get_option('ww_auth_log_loginSec_disableAuthorScan')) {
+        add_filter('oembed_response_data', static::class.'::oembedAuthorFilter', 99, 4);
+        add_filter('rest_request_before_callbacks', static::class.'::jsonAPIAuthorFilter', 99, 3);
+        add_filter('rest_post_dispatch', static::class.'::jsonAPIAdjustHeaders', 99, 3);
+        add_filter('wp_sitemaps_users_pre_url_list', '__return_false', 99, 0);
+        add_filter('wp_sitemaps_add_provider', static::class.'::wpSitemapUserProviderFilter', 99, 2);
+    }
+
+    add_action('request', static::class.'::preventAuthorNScans');
     add_action('init', static::class.'::initAction');
 
     add_filter('get_the_generator_html', static::class.'::genFilter', 99, 2);
@@ -596,15 +607,15 @@ class WWAuthLogger {
      * @return void
      */
     public static function migrateCodeExecutionForUploadsPHP7() {
-        if (self::get('disableCodeExecutionUploads')) {
-            if (!self::get('disableCodeExecutionUploadsPHP7Migrated')) {
+        if (get_option('disableCodeExecutionUploads')) {
+            if (!get_option('disableCodeExecutionUploadsPHP7Migrated')) {
                 $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
                 if (file_exists($uploads_htaccess_file_path)) {
                     $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
                     if (preg_match(self::$_disable_scripts_regex, $htaccess_contents)) {
                         $htaccess_contents = preg_replace(self::$_disable_scripts_regex, self::$_disable_scripts_htaccess, $htaccess_contents);
                         @file_put_contents($uploads_htaccess_file_path, $htaccess_contents);
-                        self::set('disableCodeExecutionUploadsPHP7Migrated', true);
+                        set_option('disableCodeExecutionUploadsPHP7Migrated', true);
                     }
                 }
             }
@@ -653,6 +664,107 @@ class WWAuthLogger {
         return $upload_dir['basedir'] . '/.htaccess';
     }
 
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $data
+     * @param $post
+     * @param $width
+     * @param $height
+     * @return mixed
+     */
+	public static function oembedAuthorFilter($data, $post, $width, $height) {
+		unset($data['author_name']);
+		unset($data['author_url']);
+		return $data;
+	}
 
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $response
+     * @param $handler
+     * @param $request
+     * @return mixed|\WP_Error|\WP_HTTP_Response|\WP_REST_Response
+     */
+	public static function jsonAPIAuthorFilter($response, $handler, $request) {
+		$route = $request->get_route();
+		if (!current_user_can('edit_others_posts')) {
+			$urlBase = WWAuth_WP_REST_Users_Controller::wfGetURLBase();
+			if (preg_match('~' . preg_quote($urlBase, '~') . '/*$~i', $route)) {
+				$error = new WP_Error('rest_user_cannot_view', __('Sorry, you are not allowed to list users.', 'ww_auth_log'), array('status' => rest_authorization_required_code()));
+				$response = rest_ensure_response($error);
+				if (!defined('WWAUTH_REST_API_SUPPRESSED')) { define('WWAUTH_REST_API_SUPPRESSED', true); }
+			}
+			else if (preg_match('~' . preg_quote($urlBase, '~') . '/+(\d+)/*$~i', $route, $matches)) {
+				$id = (int) $matches[1];
+				if (get_current_user_id() !== $id) {
+					$error = new WP_Error('rest_user_invalid_id', __('Invalid user ID.', 'ww_auth_log'), array('status' => 404));
+					$response = rest_ensure_response($error);
+					if (!defined('WWAUTH_REST_API_SUPPRESSED')) { define('WWAUTH_REST_API_SUPPRESSED', true); }
+				}
+			}
+		}
+		return $response;
+	}
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $response
+     * @param $server
+     * @param $request
+     * @return mixed
+     */
+	public static function jsonAPIAdjustHeaders($response, $server, $request) {
+		if (defined('WWAUTH_REST_API_SUPPRESSED')) {
+			$response->header('Allow', 'GET');
+		}
+
+		return $response;
+	}
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $provider
+     * @param $name
+     * @return false|mixed
+     */
+	public static function wpSitemapUserProviderFilter($provider, $name) {
+		if ($name === 'users') {
+			return false;
+		}
+		return $provider;
+	}
+
+	/**
+	 * Modify the query to prevent username enumeration.
+	 *
+	 * @param array $query_vars
+	 * @return array
+	 */
+	public static function preventAuthorNScans($query_vars) {
+		if (get_option('ww_auth_log_loginSec_disableAuthorScan') && !is_admin() &&
+			!empty($query_vars['author']) && (is_array($query_vars['author']) || is_numeric(preg_replace('/[^0-9]/', '', $query_vars['author']))) &&
+			(
+				(isset($_GET['author']) && (is_array($_GET['author']) || is_numeric(preg_replace('/[^0-9]/', '', $_GET['author'])))) ||
+				(isset($_POST['author']) && (is_array($_POST['author']) || is_numeric(preg_replace('/[^0-9]/', '', $_POST['author']))))
+			)
+		) {
+			global $wp_query;
+			$wp_query->set_404();
+			status_header(404);
+			nocache_headers();
+
+			$template = get_404_template();
+			if ($template && file_exists($template)) {
+				include($template);
+			}
+
+			exit;
+		}
+		return $query_vars;
+	}
 
 }

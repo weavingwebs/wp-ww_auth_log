@@ -15,6 +15,10 @@ use WW\AuthLog\WWAuthLogSettings;
 
 require __DIR__ . '/vendor/autoload.php';
 
+if (class_exists('WP_REST_Users_Controller')) { //WP 4.7+
+	require_once(dirname(__FILE__) . '/src/WWAuthRESTAPI.php');
+}
+
 $ww_auth_logger = new WWAuthLogger();
 $ww_auth_logger->wpInit();
 $ww_auth_logger_settings = new WWAuthLogSettings();
