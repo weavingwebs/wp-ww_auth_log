@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: "ww_auth_log"
-          path: dist/ww_auth_log
+          path: dist
           overwrite: true
           if-no-files-found: error
 
