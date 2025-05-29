@@ -31,7 +31,7 @@ jobs:
             echo "Tag v$(jq -r .version dist/details.json) already exists. Please bump version."
             exit 1
           fi
-          ::set-output name=version::$(jq -r .version dist/details.json)
+          echo "version=$(jq -r .version dist/details.json)" >> $GITHUB_OUTPUT
 
       - name: Delete details.json before zip
         run: rm dist/details.json
