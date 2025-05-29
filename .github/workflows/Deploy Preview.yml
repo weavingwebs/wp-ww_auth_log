@@ -24,12 +24,14 @@ jobs:
 
       # Fail if the version already exists as a tag.
       - name: Check for existing tag
+        id: check-version
         run: |
           git fetch --depth=1 origin +refs/tags/*:refs/tags/*
           if git rev-parse "v$(jq -r .version dist/details.json)" >/dev/null 2>&1; then
             echo "Tag v$(jq -r .version dist/details.json) already exists. Please bump version."
             exit 1
           fi
+          ::set-output name=version::$(jq -r .version dist/details.json)
 
       - name: Delete details.json before zip
         run: rm dist/details.json
@@ -50,7 +52,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           state: success
-          description: Deploy preview ready!
+          description: "${{ steps.check-version.outputs.version }}"
           url: ${{ steps.deploy.outputs.artifact-url }}
           context: Deploy Preview URL
 
