@@ -31,6 +31,9 @@ jobs:
             exit 1
           fi
 
+      - name: Delete details.json before zip
+        run: rm dist/details.json
+
       - name: Deploy
         id: deploy
         if: success()
