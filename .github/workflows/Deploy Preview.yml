@@ -1,0 +1,63 @@
+name: Deploy Preview
+
+on: pull_request
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set deployment status
+        uses: pbrandone/create-status-action@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: pending
+          description: Preparing deploy preview
+          context: Deploy Preview URL
+
+      - name: Build
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+        run: ./build-release.sh
+
+      # Fail if the version already exists as a tag.
+      - name: Check for existing tag
+        run: |
+          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+          if git rev-parse "v$(jq -r .version dist/details.json)" >/dev/null 2>&1; then
+            echo "Tag v$(jq -r .version dist/details.json) already exists. Please bump version."
+            exit 1
+          fi
+
+      - name: Deploy
+        id: deploy
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-zip
+          path: |
+            dist/details.json
+            dist/ww_auth_log.zip
+          overwrite: true
+          if-no-files-found: error
+
+      - name: Set success deployment status
+        if: success()
+        uses: pbrandone/create-status-action@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: success
+          description: Deploy preview ready!
+          url: ${{ steps.deploy.outputs.artifact-url }}
+          context: Deploy Preview URL
+
+      - name: Set failed deployment status
+        if: failure()
+        uses: pbrandone/create-status-action@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          state: failure
+          description: Failed to deploy preview
+          context: Deploy Preview URL

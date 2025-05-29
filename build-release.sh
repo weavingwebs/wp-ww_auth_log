@@ -26,7 +26,7 @@ rm -rf "$TMP_DIR"
 cd "$ROOT"
 
 # Install composer deps.
-#composer install --no-dev
+composer install --no-dev
 
 # Build ZIP.
 rm -rf dist/ww_auth_log.zip dist/ww_auth_log
