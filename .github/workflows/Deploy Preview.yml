@@ -36,10 +36,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: build-zip
-          path: |
-            dist/details.json
-            dist/ww_auth_log.zip
+          name: "ww_auth_log.zip"
+          path: dist/ww_auth_log.zip
           overwrite: true
           if-no-files-found: error
 
