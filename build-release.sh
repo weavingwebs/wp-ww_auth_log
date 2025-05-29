@@ -26,9 +26,9 @@ rm -rf "$TMP_DIR"
 cd "$ROOT"
 
 # Install composer deps.
-#composer install --no-dev
+composer install --no-dev
 
-# Build ZIP.
+# Build plugin directory.
 rm -rf dist/ww_auth_log.zip dist/ww_auth_log
 mkdir -p dist/ww_auth_log
 cp -rv \
@@ -38,9 +38,6 @@ cp -rv \
   LICENSE \
   GeoLite2-Country.mmdb \
   dist/ww_auth_log
-cd dist
-zip -r ww_auth_log.zip ww_auth_log
-rm -rf ww_auth_log
 
 # Write details.json.
 DETAILS_JSON='{
@@ -63,6 +60,6 @@ echo "$DETAILS_JSON" | jq \
   --arg version "$VERSION" \
   '.version = $version |
   .last_updated = $last_updated' \
-  > details.json
+  > "$ROOT"/dist/details.json
 
 echo "Wrote details.json (version: $VERSION)"

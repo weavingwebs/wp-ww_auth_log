@@ -4,6 +4,11 @@ namespace WW\AuthLog;
 
 use GeoIp2\Database\Reader;
 use GeoIp2\Exception\AddressNotFoundException;
+use \WP_Scripts;
+use \WP_Styles;
+use \Exception;
+use \WWAuth_WP_REST_Users_Controller;
+use \WP_Error;
 
 /**
  * WordPress WW Auth Logger.
@@ -65,6 +70,33 @@ class WWAuthLogger {
 	 */
 	protected $timezone;
 
+    /**
+     * @var string $_disable_scripts_regex
+     * Regex required for disabling code execution in uploads directory
+     */
+    private static $_disable_scripts_regex = '/# BEGIN Wordfence code execution protection.+?# END Wordfence code execution protection/s';
+
+    /**
+     * .htaccess file contents to disable all script execution in a given directory.
+     * Regex required for disabling code execution in uploads directory
+     */
+    private static $_disable_scripts_htaccess = '# BEGIN Wordfence code execution protection
+    <IfModule mod_php5.c>
+    php_flag engine 0
+    </IfModule>
+    <IfModule mod_php7.c>
+    php_flag engine 0
+    </IfModule>
+    <IfModule mod_php.c>
+    php_flag engine 0
+    </IfModule>
+    
+    AddHandler cgi-script .php .phtml .php3 .pl .py .jsp .asp .htm .shtml .sh .cgi
+    Options -ExecCGI
+    # END Wordfence code execution protection
+    ';
+
+
 	/**
 	 * Public constructor.
 	 */
@@ -80,6 +112,8 @@ class WWAuthLogger {
 
 	/**
 	 * Initialise the Wordpress Hooks.
+     *
+     * @throws Exception
 	 */
 	public function wpInit() {
 		add_action( 'wp_login', [ $this, 'wp_login' ], 10, 2 );
@@ -104,6 +138,37 @@ class WWAuthLogger {
     add_filter( 'auto_core_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_core_update_send_email'));
     add_filter( 'auto_plugin_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_plugin_update_send_email'));
     add_filter( 'auto_theme_update_send_email', $this->return_false_if_option_true_callback('ww_auth_log_disable_auto_theme_update_send_email'));
+
+    if(get_option('ww_auth_log_other_hideWPVersion')){
+        add_filter('style_loader_src', static::class.'::replaceVersion');
+        add_filter('script_loader_src', static::class.'::replaceVersion');
+    }
+
+    if(get_option('ww_auth_log_disableCodeExecutionUploads')){
+        self::disableCodeExecutionForUploads();
+    }else{
+        self::removeCodeExecutionProtectionForUploads();
+    }
+
+    if (get_option('ww_auth_log_loginSec_disableAuthorScan')) {
+        add_filter('oembed_response_data', static::class.'::oembedAuthorFilter', 99, 4);
+        add_filter('rest_request_before_callbacks', static::class.'::jsonAPIAuthorFilter', 99, 3);
+        add_filter('rest_post_dispatch', static::class.'::jsonAPIAdjustHeaders', 99, 3);
+        add_filter('wp_sitemaps_users_pre_url_list', '__return_false', 99, 0);
+        add_filter('wp_sitemaps_add_provider', static::class.'::wpSitemapUserProviderFilter', 99, 2);
+    }
+
+    add_action('request', static::class.'::preventAuthorNScans');
+    add_action('init', static::class.'::initAction');
+
+    add_filter('get_the_generator_html', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_xhtml', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_atom', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_rss2', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_rdf', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_comment', static::class.'::genFilter', 99, 2);
+    add_filter('get_the_generator_export', static::class.'::genFilter', 99, 2);
+
 
     // Register the installer. NOTE: this function must be passed the filepath
 		// to the main plugin file (The one with 'Plugin Name:').
@@ -431,5 +496,275 @@ class WWAuthLogger {
 		return $country;
 	}
 
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $url
+     * @return array|mixed|string|string[]|null
+     */
+    public static function replaceVersion($url) {
+        if (is_string($url))
+            return preg_replace_callback("/([&;\?]ver)=(.+?)(&|$)/", static::class."::replaceVersionCallback", $url);
+        return $url;
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $matches
+     * @return string
+     */
+    public static function replaceVersionCallback($matches) {
+        global $wp_version;
+        return $matches[1] . '=' . ($wp_version === $matches[2] ? wp_hash($matches[2]) : $matches[2]) . $matches[3];
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     * @return void
+     */
+    public static function initAction()
+    {
+		if (get_option('ww_auth_log_other_hideWPVersion')) {
+
+            global $wp_version;
+            global $wp_styles;
+
+            if (!($wp_styles instanceof WP_Styles)) {
+                $wp_styles = new WP_Styles();
+            }
+            if ($wp_styles->default_version === $wp_version) {
+                $wp_styles->default_version = wp_hash($wp_styles->default_version);
+            }
+
+            foreach ($wp_styles->registered as $key => $val) {
+                if ($wp_styles->registered[$key]->ver === $wp_version) {
+                    $wp_styles->registered[$key]->ver = wp_hash($wp_styles->registered[$key]->ver);
+                }
+            }
+
+            global $wp_scripts;
+            if (!($wp_scripts instanceof WP_Scripts)) {
+                $wp_scripts = new WP_Scripts();
+            }
+            if ($wp_scripts->default_version === $wp_version) {
+                $wp_scripts->default_version = wp_hash($wp_scripts->default_version);
+            }
+
+            foreach ($wp_scripts->registered as $key => $val) {
+                if ($wp_scripts->registered[$key]->ver === $wp_version) {
+                    $wp_scripts->registered[$key]->ver = wp_hash($wp_scripts->registered[$key]->ver);
+                }
+            }
+        }
+    }
+
+    /**
+     * Part of function to hide WP version number from being found easily
+     *
+     * @param $gen
+     * @param $type
+     * @return mixed|string
+     */
+    public static function genFilter($gen, $type){
+        if(get_option('ww_auth_log_other_hideWPVersion')){
+            return '';
+        } else {
+            return $gen;
+        }
+    }
+
+    /**
+     * Add/Merge .htaccess file in the uploads directory to prevent code execution.
+     *
+     * Part of function to disable code execution from the uploads directory
+     *
+     * @return bool
+     * @throws Exception
+     */
+    public static function disableCodeExecutionForUploads() {
+        $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+        $uploads_htaccess_has_content = false;
+        if (file_exists($uploads_htaccess_file_path)) {
+            $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+
+            // htaccess exists and contains our htaccess code to disable script execution, nothing more to do
+            if (strpos($htaccess_contents, self::$_disable_scripts_htaccess) !== false) {
+                return true;
+            }
+            $uploads_htaccess_has_content = strlen(trim($htaccess_contents)) > 0;
+        }
+        if (@file_put_contents($uploads_htaccess_file_path, ($uploads_htaccess_has_content ? "\n\n" : "") . self::$_disable_scripts_htaccess, FILE_APPEND | LOCK_EX) === false) {
+            throw new Exception(__("Unable to save the .htaccess file needed to disable script execution in the uploads directory. Please check your permissions on that directory.", 'wordfence'));
+        }
+        update_option( 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated', true );
+        return true;
+    }
+
+    /**
+     * Part of function to disable code execution from the uploads directory
+
+     * @return void
+     */
+    public static function migrateCodeExecutionForUploadsPHP7() {
+        if (get_option('disableCodeExecutionUploads')) {
+            if (!get_option('disableCodeExecutionUploadsPHP7Migrated')) {
+                $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+                if (file_exists($uploads_htaccess_file_path)) {
+                    $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+                    if (preg_match(self::$_disable_scripts_regex, $htaccess_contents)) {
+                        $htaccess_contents = preg_replace(self::$_disable_scripts_regex, self::$_disable_scripts_htaccess, $htaccess_contents);
+                        @file_put_contents($uploads_htaccess_file_path, $htaccess_contents);
+                        set_option('disableCodeExecutionUploadsPHP7Migrated', true);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Remove script execution protections for our the .htaccess file in the uploads directory.
+     *
+     * Part of function to disable code execution from the uploads directory
+
+     * @return bool
+     * @throws Exception
+     */
+    public static function removeCodeExecutionProtectionForUploads() {
+        $uploads_htaccess_file_path = self::_uploadsHtaccessFilePath();
+        if (file_exists($uploads_htaccess_file_path)) {
+            $htaccess_contents = file_get_contents($uploads_htaccess_file_path);
+
+            // Check that it is in the file
+            if (preg_match(self::$_disable_scripts_regex, $htaccess_contents)) {
+                $htaccess_contents = preg_replace(self::$_disable_scripts_regex, '', $htaccess_contents);
+
+                $error_message = __("Unable to remove code execution protections applied to the .htaccess file in the uploads directory. Please check your permissions on that file.", 'wordfence');
+                if (strlen(trim($htaccess_contents)) === 0) {
+                    // empty file, remove it
+                    if (!@unlink($uploads_htaccess_file_path)) {
+                        throw new Exception($error_message);
+                    }
+
+                } elseif (@file_put_contents($uploads_htaccess_file_path, $htaccess_contents, LOCK_EX) === false) {
+                    throw new Exception($error_message);
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Part of function to disable code execution from the uploads directory
+     *
+     * @return string
+     */
+    private static function _uploadsHtaccessFilePath() {
+        $upload_dir = wp_upload_dir();
+        return $upload_dir['basedir'] . '/.htaccess';
+    }
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $data
+     * @param $post
+     * @param $width
+     * @param $height
+     * @return mixed
+     */
+	public static function oembedAuthorFilter($data, $post, $width, $height) {
+		unset($data['author_name']);
+		unset($data['author_url']);
+		return $data;
+	}
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $response
+     * @param $handler
+     * @param $request
+     * @return mixed|\WP_Error|\WP_HTTP_Response|\WP_REST_Response
+     */
+	public static function jsonAPIAuthorFilter($response, $handler, $request) {
+		$route = $request->get_route();
+		if (!current_user_can('edit_others_posts')) {
+			$urlBase = WWAuth_WP_REST_Users_Controller::wfGetURLBase();
+			if (preg_match('~' . preg_quote($urlBase, '~') . '/*$~i', $route)) {
+				$error = new WP_Error('rest_user_cannot_view', __('Sorry, you are not allowed to list users.', 'ww_auth_log'), array('status' => rest_authorization_required_code()));
+				$response = rest_ensure_response($error);
+				if (!defined('WWAUTH_REST_API_SUPPRESSED')) { define('WWAUTH_REST_API_SUPPRESSED', true); }
+			}
+			else if (preg_match('~' . preg_quote($urlBase, '~') . '/+(\d+)/*$~i', $route, $matches)) {
+				$id = (int) $matches[1];
+				if (get_current_user_id() !== $id) {
+					$error = new WP_Error('rest_user_invalid_id', __('Invalid user ID.', 'ww_auth_log'), array('status' => 404));
+					$response = rest_ensure_response($error);
+					if (!defined('WWAUTH_REST_API_SUPPRESSED')) { define('WWAUTH_REST_API_SUPPRESSED', true); }
+				}
+			}
+		}
+		return $response;
+	}
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $response
+     * @param $server
+     * @param $request
+     * @return mixed
+     */
+	public static function jsonAPIAdjustHeaders($response, $server, $request) {
+		if (defined('WWAUTH_REST_API_SUPPRESSED')) {
+			$response->header('Allow', 'GET');
+		}
+
+		return $response;
+	}
+
+    /**
+     * Part of function to prevent discovery of usernames
+     *
+     * @param $provider
+     * @param $name
+     * @return false|mixed
+     */
+	public static function wpSitemapUserProviderFilter($provider, $name) {
+		if ($name === 'users') {
+			return false;
+		}
+		return $provider;
+	}
+
+	/**
+	 * Modify the query to prevent username enumeration.
+	 *
+	 * @param array $query_vars
+	 * @return array
+	 */
+	public static function preventAuthorNScans($query_vars) {
+		if (get_option('ww_auth_log_loginSec_disableAuthorScan') && !is_admin() &&
+			!empty($query_vars['author']) && (is_array($query_vars['author']) || is_numeric(preg_replace('/[^0-9]/', '', $query_vars['author']))) &&
+			(
+				(isset($_GET['author']) && (is_array($_GET['author']) || is_numeric(preg_replace('/[^0-9]/', '', $_GET['author'])))) ||
+				(isset($_POST['author']) && (is_array($_POST['author']) || is_numeric(preg_replace('/[^0-9]/', '', $_POST['author']))))
+			)
+		) {
+			global $wp_query;
+			$wp_query->set_404();
+			status_header(404);
+			nocache_headers();
+
+			$template = get_404_template();
+			if ($template && file_exists($template)) {
+				include($template);
+			}
+
+			exit;
+		}
+		return $query_vars;
+	}
 
 }

@@ -42,6 +42,18 @@ class WWAuthLogSettings {
 
     add_option( 'ww_auth_log_disable_auto_theme_update_send_email', '1');
     register_setting( 'ww_auth_log_options', 'ww_auth_log_disable_auto_theme_update_send_email' );
+
+    add_option( 'ww_auth_log_other_hideWPVersion', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_other_hideWPVersion' );
+
+    add_option( 'ww_auth_log_disableCodeExecutionUploads', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_disableCodeExecutionUploads' );
+
+    add_option( 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_disableCodeExecutionUploadsPHP7Migrated' );
+
+    add_option( 'ww_auth_log_loginSec_disableAuthorScan', '1');
+    register_setting( 'ww_auth_log_options', 'ww_auth_log_loginSec_disableAuthorScan' );
 	}
 
 	public function admin_menu() {
@@ -192,6 +204,42 @@ class WWAuthLogSettings {
                 <?php checked( get_option('ww_auth_log_disable_auto_theme_update_send_email'), 1 ); ?>
               />
               Disable theme update emails
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_other_hideWPVersion"
+                name="ww_auth_log_other_hideWPVersion"
+                value="1"
+                <?php checked( get_option('ww_auth_log_other_hideWPVersion'), 1 ); ?>
+              />
+              Hide Wordpress version
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_disableCodeExecutionUploads"
+                name="ww_auth_log_disableCodeExecutionUploads"
+                value="1"
+                <?php checked( get_option('ww_auth_log_disableCodeExecutionUploads'), 1 ); ?>
+              />
+              Disable Code Execution for Uploads directory
+            </label>
+          </div>
+          <div>
+            <label>
+              <input
+                type="checkbox"
+                id="ww_auth_log_loginSec_disableAuthorScan"
+                name="ww_auth_log_loginSec_disableAuthorScan"
+                value="1"
+                <?php checked( get_option('ww_auth_log_loginSec_disableAuthorScan'), 1 ); ?>
+              />
+              Prevent discovery of usernames through "/?author=N" scans, the oEmbed API, the WordPress REST API, and WordPress XML Sitemaps
             </label>
           </div>
         </div>

@@ -16,6 +16,11 @@ fi
 # Build release.
 ./build-release.sh
 
+# Build zip.
+cd dist
+zip -r ww_auth_log.zip ww_auth_log
+cd "$ROOT"
+
 # Deploy release.
 rsync -Pz \
   dist/details.json dist/ww_auth_log.zip \

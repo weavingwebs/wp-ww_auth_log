@@ -3,7 +3,7 @@
 * Plugin Name: WW Auth Log
 * Description: Weaving Webs Additional Security.
 * Text Domain: wp-ww_auth_log
-* Version: 1.2.17
+* Version: 1.3.0
 * Author: Weaving Webs Ltd
 * License: GPL2
 * SPDX-License-Identifier: GPL-2.0
@@ -14,6 +14,10 @@ use WW\AuthLog\WWAuthLogger;
 use WW\AuthLog\WWAuthLogSettings;
 
 require __DIR__ . '/vendor/autoload.php';
+
+if (class_exists('WP_REST_Users_Controller')) { //WP 4.7+
+	require_once(dirname(__FILE__) . '/src/WWAuthRESTAPI.php');
+}
 
 $ww_auth_logger = new WWAuthLogger();
 $ww_auth_logger->wpInit();
